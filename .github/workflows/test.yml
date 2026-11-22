@@ -40,3 +40,8 @@ jobs:
           actual="$(dbman --version)"
           echo "dbman reports: $actual"
           [ "$actual" = "$EXPECTED" ]
+
+      - name: Verify help succeeds
+        shell: bash
+        run: |
+          dbman --help
