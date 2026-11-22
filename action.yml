@@ -1,0 +1,78 @@
+name: Setup dbman
+description: Install the DatabaseManager CLI (dbman) from GitHub Releases and add it to PATH
+branding:
+  icon: database
+  color: blue
+
+inputs:
+  version:
+    description: 'dbman version without the "v" prefix, e.g. 1.4.2. Defaults to the latest release.'
+    default: latest
+
+outputs:
+  version:
+    description: The installed dbman version
+    value: ${{ steps.install.outputs.version }}
+
+runs:
+  using: composite
+  steps:
+    - id: install
+      shell: bash
+      env:
+        DBMAN_VERSION: ${{ inputs.version }}
+        REPO: tcfoss/database-manager
+        RUNNER_OS_NAME: ${{ runner.os }}
+        RUNNER_ARCH_NAME: ${{ runner.arch }}
+      run: |
+        set -euo pipefail
+
+        case "$RUNNER_OS_NAME" in
+          Linux)   os=linux ;;
+          macOS)   os=osx ;;
+          Windows) os=win ;;
+          *) echo "::error::Unsupported OS: $RUNNER_OS_NAME"; exit 1 ;;
+        esac
+        case "$RUNNER_ARCH_NAME" in
+          X64)   arch=x64 ;;
+          ARM64) arch=arm64 ;;
+          *) echo "::error::Unsupported architecture: $RUNNER_ARCH_NAME"; exit 1 ;;
+        esac
+
+        asset="database-manager-${os}-${arch}.tar.gz"
+        if [ "$DBMAN_VERSION" = "latest" ]; then
+          base="https://github.com/${REPO}/releases/latest/download"
+        else
+          base="https://github.com/${REPO}/releases/download/v${DBMAN_VERSION#v}"
+        fi
+
+        dest="$RUNNER_TEMP/dbman"
+        mkdir -p "$dest"
+        curl -fsSL --retry 3 -o "$dest/$asset" "$base/$asset"
+        curl -fsSL --retry 3 -o "$dest/SHA256SUMS" "$base/SHA256SUMS"
+
+        # Verify the checksum for just this asset
+        expected=$(grep " ${asset}\$" "$dest/SHA256SUMS" | cut -d' ' -f1)
+        [ -n "$expected" ] || { echo "::error::No checksum for $asset"; exit 1; }
+
+        if command -v sha256sum >/dev/null; then
+          actual=$(sha256sum "$dest/$asset" | cut -d' ' -f1)
+        else
+          actual=$(shasum -a 256 "$dest/$asset" | cut -d' ' -f1)
+
+        fi
+        [ "$expected" = "$actual" ] || { echo "::error::Checksum mismatch for $asset"; exit 1; }
+
+        tar -xzf "$dest/$asset" -C "$dest"
+        rm "$dest/$asset"
+
+        if [ "$os" = win ]; then
+          mv "$dest/TcfOss.DatabaseManager.App.exe" "$dest/dbman.exe"
+        else
+          mv "$dest/TcfOss.DatabaseManager.App" "$dest/dbman"
+          chmod +x "$dest/dbman"
+        fi
+
+        echo "$dest" >> "$GITHUB_PATH"
+        # Report the installed version (PATH isn't updated until the next step)
+        echo "version=$("$dest/dbman" --version)" >> "$GITHUB_OUTPUT"
