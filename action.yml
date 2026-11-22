@@ -59,17 +59,18 @@ runs:
         else
           echo "$line" | shasum -a 256 -c -
         fi
-        cd - >/dev/null
 
-        tar -xzf "$dest/$asset" -C "$dest"
-        rm "$dest/$asset"
+        tar -xzf "$asset"
+        rm "$asset"
 
         if [ "$os" = win ]; then
-          mv "$dest/TcfOss.DatabaseManager.App.exe" "$dest/dbman.exe"
+          mv "TcfOss.DatabaseManager.App.exe" "dbman.exe"
         else
-          mv "$dest/TcfOss.DatabaseManager.App" "$dest/dbman"
-          chmod +x "$dest/dbman"
+          mv "TcfOss.DatabaseManager.App" "dbman"
+          chmod +x "dbman"
         fi
+
+        cd - >/dev/null
 
         echo "$dest" >> "$GITHUB_PATH"
         # Report the installed version (PATH isn't updated until the next step)
