@@ -61,7 +61,7 @@ runs:
           actual=$(shasum -a 256 "$dest/$asset" | cut -d' ' -f1)
 
         fi
-        [ "$expected" = "$actual" ] || { echo "::error::Checksum mismatch for $asset"; exit 1; }
+        [ "$expected" = "$actual" ] || { echo "::error::Checksum mismatch for $asset (expected $expected, got $actual)"; exit 1; }
 
         tar -xzf "$dest/$asset" -C "$dest"
         rm "$dest/$asset"
